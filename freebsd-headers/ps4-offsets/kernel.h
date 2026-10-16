@@ -58,7 +58,11 @@
 #ifdef __13_52__
 #include "1352.h"
 #else
+#ifdef __14_00__
+#include "1400.h"
+#else
 #error "unsupported firmware"
+#endif
 #endif
 #endif
 #endif

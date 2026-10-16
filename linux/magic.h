@@ -495,7 +495,7 @@
 #define kern_off_update_vddnp 0x4b9d90
 #define kern_off_set_cu_power_gate 0x4ba1a0
 #define kern_off_pstate_before_shutdown 0x3a2120
-#define kern_off_set_nclk_mem_spd 0
+#define kern_off_set_nclk_mem_spd 0x436650
 
 // 12.00 & 12.02
 #elif defined PS4_12_00 //bestpig
@@ -675,7 +675,7 @@
 #define kern_off_pstate_before_shutdown 0x3A2780
 #define kern_off_set_nclk_mem_spd 0x436D40
 
-#elif defined PS4_13_52 //ArabPixel from 12.02
+#elif defined PS4_13_52 //ArabPixel
 #define kern_off_printf 0x2E0510
 #define kern_off_snprintf 0x2E0810
 #define kern_off_copyin 0x2BD790
@@ -709,5 +709,41 @@
 #define kern_off_set_cu_power_gate 0x4BAC90
 #define kern_off_pstate_before_shutdown 0x3A2B90
 #define kern_off_set_nclk_mem_spd 0x437140
+
+// 12.00 & 12.02
+#elif defined PS4_14_00 //ArabPixel
+#define kern_off_printf 0x2E07C0
+#define kern_off_snprintf 0x2E0AC0
+#define kern_off_copyin 0x2BDA40
+#define kern_off_copyout 0x2BD950
+#define kern_off_copyinstr 0x2BDEF0
+#define kern_off_kmem_alloc_contig 0x24D780
+#define kern_off_kmem_free 0x466710
+#define kern_off_pmap_extract 0x573D0
+#define kern_off_pmap_protect 0x58570
+#define kern_off_sched_pin 0x2319B0
+#define kern_off_sched_unpin 0x2319D0
+#define kern_off_smp_rendezvous 0x1AD880
+#define kern_off_smp_no_rendevous_barrier 0x1AD690
+#define kern_off_icc_query_nowait 0x448630
+#define kern_off_kernel_map 0x22d1d50
+#define kern_off_sysent 0x1102b70
+#define kern_off_kernel_pmap_store 0x1b2c3a0
+#define kern_off_Starsha_UcodeInfo 0x0
+#define kern_off_gpu_devid_is_9924 0x4AD0A0
+#define kern_off_gc_get_fw_info 0x4BBA50
+#define kern_off_pml4pml4i 0x1b2c390
+#define kern_off_dmpml4i 0x1b2c394
+#define kern_off_dmpdpi 0x1b2c398
+#define kern_off_eap_hdd_key 0x26c4cf0
+#define kern_off_edid 0x275e148
+#define kern_off_wlanbt 0x479550
+#define kern_off_kern_reboot 0x3A2850
+#define kern_off_set_gpu_freq 0x4BA590
+#define kern_off_set_pstate 0x4BC960
+#define kern_off_update_vddnp 0x4BAB30
+#define kern_off_set_cu_power_gate 0x4BAF40
+#define kern_off_pstate_before_shutdown 0x3A2E40
+#define kern_off_set_nclk_mem_spd 0x4373F0
 
 #endif

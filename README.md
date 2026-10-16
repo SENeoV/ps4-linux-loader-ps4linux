@@ -1,10 +1,10 @@
-# ![PS4](https://img.shields.io/badge/-PS4-003791?style=flat&logo=PlayStation) Linux Payloads for FW 5.05 - 13.52
+# ![PS4](https://img.shields.io/badge/-PS4-003791?style=flat&logo=PlayStation) Linux Payloads for FW 5.05 - 14.00
 (Southbridge: Aeolia & Belize(2) & Baikal)
 
 **Linux-Payloads** kexec for PlayStation 4.
 
 The host with precompiled Linux payloads works well with GoldHEN's PayLoader. Just open the web browser and cache the host—it will also work offline too.
-[PSFree-Enhanced](https://arabpixel.github.io/PSFree-Enhanced)
+[WebKitty](http://webkitty.arabpixel.net)
 
 There's also a great [Linux setup guide by DionKill](https://dionkill.github.io/ps4-linux-tutorial/)
 
@@ -28,9 +28,10 @@ There's also a great [Linux setup guide by DionKill](https://dionkill.github.io/
 *   FW 12.00 / 12.02 ✅ 
 *   FW 12.50 / 12.52 ✅
 *   FW 13.00 ✅
-*   FW 13.02(?) / FW 13.04(?)✅
-*   FW 13.50(?) ✅
-*   FW 13.52(?) ✅
+*   FW 13.02 / FW 13.04 ✅
+*   FW 13.50 ✅
+*   FW 13.52 ✅
+*   FW 14.00(?)
 
 ## Info 
 The internal path by default is at: ``/data/linux/boot``, however it'll also check for ``/user/system/boot/`` in case it was not found.
@@ -83,8 +84,8 @@ Baikal: ``console=uart8250,mmio32,0xC890E000``
 
 
 ## How to Compile
-    git clone https://github.com/ArabPixel/ps4-linux-payloads
-    cd ps4-linux-payloads/linux
+    git clone https://github.com/ps4-linux/ps4-linux-loader
+    cd ps4-linux-loader/linux
     make
 
 
@@ -94,29 +95,30 @@ Baikal: ``console=uart8250,mmio32,0xC890E000``
 * AlAzif / KiwiDog / Specter / Celesteblue / ChendoChap / zecoxao / SocraticBliss / ctn123 (Exploit and Fun Stuff for the Console)
 * bestpig / EchoStretch / EinTim23 / tihmstar / ArabPixel (Offsets)
 * rmuxnet / ArabPixel (for making this loader firmware/southbridge agnostic)
+* ps4boot (For the original project)
 * Contributors
 * others ...
 
 
 ## Change log
-- PS4 13.52 Support + Edid fix. [v25](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v25)
+- PS4 13.52 Support + Edid fix. [v25](https://github.com/ps4-linux/ps4-linux-loader/releases/tag/v25)
 
-- PS4 13.04 & 13.50 Support. [v24b.1](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v24b.1)
+- PS4 13.04 & 13.50 Support. [v24b.1](https://github.com/ps4-linux/ps4-linux-loader/releases/tag/v24b.1)
 
-- PS4 PRO, Southbridge and firmware version run-time detection [v24b](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v24b)
+- PS4 PRO, Southbridge and firmware version run-time detection [v24b](https://github.com/ps4-linux/ps4-linux-loader/releases/tag/v24b)
   - No more separate Baikal or PRO payloads
   - firmware agnostic payload. AKA one payload works for all supported firmware versions
 
-- Backup files path [v23](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v23)
+- Backup files path [v23](https://github.com/ps4-linux/ps4-linux-loader/releases/tag/v23)
   - Looks for the files in ``/user/system/boot/``  if they weren't found in the default path ``/data/linux/boot/`` 
 
-- Complete support for PS4 7.xx and 8.xx. [v23](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v23)
+- Complete support for PS4 7.xx and 8.xx. [v23](https://github.com/ps4-linux/ps4-linux-loader/releases/tag/v23)
 
-- Sub-1GB VRAM payloads [v22](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v22)
+- Sub-1GB VRAM payloads [v22](https://github.com/ps4-linux/ps4-linux-loader/releases/tag/v22)
   - Added 128mb, 256mb etc.. payload sizes for PS4 used as a headless server where GPU memory is largely unused. Set `vram.txt` to `128`, `256` or `512` (MB) to use them.
   - **32 VRAM payloads are now supported.**
 
-- PS4 12.5x, 13.0x Support. [v21.5](https://github.com/ArabPixel/ps4-linux-payloads/releases/tag/v21.5)
+- PS4 12.5x, 13.0x Support. [v21.5](https://github.com/ps4-linux/ps4-linux-loader/releases/tag/v21.5)
 
 - Automatic boot files placement – The kernel (bzImage) and initramfs.cpio.gz are now automatically copied to /data/linux/boot on the internal drive from the external fat32 partition. Why? No external drive is needed to boot into the rescue shell, only first time.
 
