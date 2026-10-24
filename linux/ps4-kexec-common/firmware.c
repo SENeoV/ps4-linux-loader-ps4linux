@@ -14,6 +14,7 @@
 #include "string.h"
 #include "types.h"
 #include "crc32.h"
+#include "../magic.h"
 
 #define DIR  0040755
 #define FILE 0100644
@@ -338,6 +339,169 @@ static void patch_fw(void *p, const u32 *handler, int handler_size) {
     }
 }
 
+/* ---------------------------------------------------------------------------
+ * UVD microcode
+ *
+ * gc_get_fw_info()'s table has eight members, all graphics and DMA, so the
+ * video engines are not in it. Orbis' UVD images are plain data in kernel
+ * rodata instead, and its KMD memcpy()s one of three by GPU id:
+ * 0x710f00-0x710f2f -> 1.101.42, above that -> 1.92.43, 0x740fxx (Gladius)
+ * -> 1.152.50. Only the Gladius case is unambiguous from here, because
+ * gpu_devid_is_9924() answers it and nothing the loader has distinguishes the
+ * two Liverpool revisions, so only Gladius gets a file.
+ *
+ * An image begins with the VCPU reset-vector table in uvd_image_sig and
+ * carries "[ATI LIB=UVDFW,x.y.z]" near its end, with the packed version word
+ * 0x0c bytes before the tag. Both are checked before anything is copied: a
+ * wrong or stale offset is caught and the file is simply left out, which
+ * leaves the boot exactly as it was.
+ *
+ * linux-firmware layout is the firmware_header above, then a 256-byte block
+ * ending in the ASCII magic "FWVH", then the image. amdgpu copies the whole
+ * array into the VCPU BO and starts the VCPU at BO + 256
+ * (AMDGPU_UVD_FIRMWARE_OFFSET), so the FWVH block is carried but never run.
+ *
+ * Derivation and addresses: docs/uvd-microcode-2026-10-23.md in the ps4 repo.
+ * ------------------------------------------------------------------------- */
+
+#define UVD_IP_MAJOR 4
+#define UVD_IP_MINOR 2
+#define UVD_FWVH_SIZE 256
+#define UVD_SCAN_START 0x400000
+#define UVD_SCAN_END  0x1000000
+
+static const u8 uvd_image_sig[16] = {
+    0x00, 0xc5, 0x49, 0x10, 0xd5, 0x49, 0x20, 0xe5,
+    0x49, 0x30, 0xf5, 0x49, 0x00, 0x34, 0x00, 0x00
+};
+static const char uvd_banner[] = "[ATI LIB=UVDFW,";
+
+static const u8 *find_bytes(const u8 *hay, size_t n, const void *needle, size_t m)
+{
+    if (m > n)
+        return NULL;
+    for (size_t i = 0; i + m <= n; i++)
+        if (!memcmp(hay + i, needle, m))
+            return hay + i;
+    return NULL;
+}
+
+/* 1 when img[0, size) really is a UVD image; *version gets its version word. */
+static int uvd_image_ok(const u8 *img, size_t size, u32 *version)
+{
+    if (!img || size < 0x10000 || size > UVD_FW_MAX_SIZE)
+        return 0;
+    if (memcmp(img, uvd_image_sig, sizeof(uvd_image_sig)))
+        return 0;
+    const u8 *tag = find_bytes(img, size, uvd_banner, sizeof(uvd_banner) - 1);
+    if (!tag || (size_t)(tag - img) < 0x10)
+        return 0;
+    *version = *(const u32 *)(tag - 0x0c);
+    return 1;
+}
+
+/* Report every UVD image in the kernel image. Runs only when the offset above
+ * did not verify, so a new firmware can be read off a boot log. */
+static const u8 *uvd_scan(size_t *size_out, u32 *version_out)
+{
+    const u8 *found = NULL;
+    int n = 0;
+
+    for (uintptr_t a = kern.kern_base + UVD_SCAN_START;
+         a < kern.kern_base + UVD_SCAN_END; a += 16) {
+        const u8 *p = (const u8 *)a;
+        if (memcmp(p, uvd_image_sig, sizeof(uvd_image_sig)))
+            continue;
+        /* bound the candidate by the next signature or the window end */
+        size_t span = (kern.kern_base + UVD_SCAN_END) - a;
+        if (span > UVD_FW_MAX_SIZE)
+            span = UVD_FW_MAX_SIZE;
+        u32 ver = 0;
+        const u8 *tag = find_bytes(p, span, uvd_banner, sizeof(uvd_banner) - 1);
+        if (!tag || (size_t)(tag - p) < 0x10)
+            continue;
+        ver = *(const u32 *)(tag - 0x0c);
+        kern.printf("firmware_extract: UVD image at kern_base+0x%x, version %d.%d.%d\n",
+                    (u32)(a - kern.kern_base), (ver >> 24) & 0xff,
+                    (ver >> 8) & 0xff, ver & 0xff);
+        n++;
+        found = p;
+        *size_out = (tag - p) + 0x18;   /* through the banner; a floor, not the size */
+        *version_out = ver;
+    }
+
+    if (n == 1)
+        return found;
+    if (n > 1)
+        kern.printf("firmware_extract: %d UVD images and no offset to choose by, "
+                    "skipping\n", n);
+    return NULL;
+}
+
+static const u8 *locate_uvd_firmware(size_t *size_out, u32 *version_out)
+{
+    if (!kern.gpu_devid_is_9924 || !kern.gpu_devid_is_9924())
+        return NULL;                      /* Liverpool: cannot tell its two apart */
+
+    if (kern.uvd_fw_gladius && kern_sz_uvd_fw_gladius) {
+        const u8 *img = (const u8 *)kern.uvd_fw_gladius;
+        if (uvd_image_ok(img, kern_sz_uvd_fw_gladius, version_out)) {
+            *size_out = kern_sz_uvd_fw_gladius;
+            return img;
+        }
+        kern.printf("firmware_extract: UVD offset did not verify, scanning\n");
+    }
+    return uvd_scan(size_out, version_out);
+}
+
+static void copy_uvd_firmware(u8 **p, const u8 *img, size_t size, u32 version)
+{
+    struct firmware_header *fhdr = (struct firmware_header *)*p;
+    memset(fhdr, 0, sizeof(*fhdr));
+    *p += sizeof(*fhdr);
+
+    u8 *array = *p;
+    memset(array, 0, UVD_FWVH_SIZE);
+    *(u32 *)(array + 0x00) = UVD_FWVH_SIZE + size;
+    *(u32 *)(array + 0x08) = 0x00010000;
+    *(u32 *)(array + 0x0c) = 0x00010000;
+    /* observed on both stock files: the image length less 0xe20 */
+    *(u32 *)(array + 0x18) = size > 0xe20 ? (u32)(size - 0xe20) : 0;
+    memcpy(array + 0x1c, "FWVH", 4);
+    *p += UVD_FWVH_SIZE;
+
+    memcpy(*p, img, size);
+    *p += size;
+
+    fhdr->size_bytes = sizeof(*fhdr) + UVD_FWVH_SIZE + size;
+    fhdr->header_size_bytes = offsetof(struct firmware_header, raw);
+    fhdr->header_version_major = 1;
+    fhdr->header_version_minor = 0;
+    fhdr->ip_version_major = UVD_IP_MAJOR;
+    fhdr->ip_version_minor = UVD_IP_MINOR;
+    fhdr->ucode_version = version;
+    fhdr->ucode_size_bytes = UVD_FWVH_SIZE + size;
+    fhdr->ucode_array_offset_bytes = sizeof(*fhdr);
+    fhdr->crc32 = crc32(0, array, UVD_FWVH_SIZE + size);
+}
+
+#ifdef UVD_SELFTEST
+/* Built only by tools/test_uvd_fw.py, which packs the same image with
+ * tools/uvd_fw.py and compares the two files byte for byte. It is the only way
+ * to check this layout without a boot, and the layout is where a mistake would
+ * be silent: 256 bytes out and the VCPU executes the wrong words. */
+size_t uvd_pack_selftest(u8 *out, const u8 *img, size_t size, u32 version)
+{
+    u8 *p = out;
+    copy_uvd_firmware(&p, img, size, version);
+    return (size_t)(p - out);
+}
+
+int uvd_image_ok_selftest(const u8 *img, size_t size, u32 *version)
+{
+    return uvd_image_ok(img, size, version);
+}
+#endif
 struct fw_info_t *get_fw_info() {
     if (kern.gc_get_fw_info) {
         return kern.gc_get_fw_info();
@@ -463,6 +627,19 @@ ssize_t firmware_extract(void *dest)
     cpio_hdr(&p, sdma1_path, FILE, FW_HEADER_SIZE + fw_sizes->sdma1);
     if (!copy_sdma_firmware(&p, "SDMA1", info->sdma1, fw_sizes->sdma1, 1))
         return -1;
+    size_t uvd_size = 0;
+    u32 uvd_version = 0;
+    const u8 *uvd = locate_uvd_firmware(&uvd_size, &uvd_version);
+    if (uvd) {
+        char uvd_path[64];
+        kern.snprintf(uvd_path, sizeof(uvd_path), "%s%s_uvd.bin", dir_path, get_gpu_name());
+        kern.printf("firmware_extract: Extract %s (UVD %d.%d.%d, %d bytes)\n",
+                    uvd_path, (uvd_version >> 24) & 0xff, (uvd_version >> 8) & 0xff,
+                    uvd_version & 0xff, (int)uvd_size);
+        cpio_hdr(&p, uvd_path, FILE, FW_HEADER_SIZE + UVD_FWVH_SIZE + uvd_size);
+        copy_uvd_firmware(&p, uvd, uvd_size, uvd_version);
+    }
+
     cpio_hdr(&p, "TRAILER!!!", FILE, 0);
 
     size_t size = p - (u8*)dest;

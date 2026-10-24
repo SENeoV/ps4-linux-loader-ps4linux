@@ -48,6 +48,11 @@
 #define FW_SDMA_SIZE MAX_FW_SIZE(SDMA)
 #define FW_SDMA1_SIZE MAX_FW_SIZE(SDMA1)
 
+// Orbis' UVD images are 228 KB (1.101.42), 307 KB (1.92.43) and 340 KB
+// (1.152.50, Gladius). Room for the largest plus its two headers; a bigger
+// image than this is skipped rather than overflowing the buffer.
+#define UVD_FW_MAX_SIZE (384 * 1024)
+
 // Conservative value (max 113 bytes plus name size plus alignment)
 #define CPIO_HEADER_SIZE 256
 
@@ -57,7 +62,8 @@
 #define FW_CPIO_SIZE (EAP_HDD_KEY_SIZE + EDID_SIZE + (CPIO_HEADER_SIZE * 16) + FW_CE_SIZE + FW_ME_SIZE + \
                        FW_MEC_SIZE + FW_MEC2_SIZE + FW_PFP_SIZE + \
                        FW_RLC_SIZE + FW_SDMA_SIZE + FW_SDMA1_SIZE + \
-                       FW_HEADER_SIZE * 8)
+                       UVD_FW_MAX_SIZE + \
+                       FW_HEADER_SIZE * 9)
 
 ssize_t firmware_extract(void *dest);
 

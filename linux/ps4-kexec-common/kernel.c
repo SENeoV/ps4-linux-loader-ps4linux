@@ -134,6 +134,7 @@ static int resolve_symbols(void)
     RESOLVE_NOERR(gc_get_fw_info);
     RESOLVE_NOERR(eap_hdd_key);
     RESOLVE_NOERR(edid);
+    RESOLVE_NOERR(uvd_fw_gladius);
     RESOLVE(wlanbt);
     RESOLVE(kern_reboot);
     RESOLVE(set_gpu_freq);

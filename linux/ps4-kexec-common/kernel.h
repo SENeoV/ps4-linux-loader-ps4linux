@@ -89,6 +89,7 @@ struct ksym_t {
     void *(*gc_get_fw_info)();
     void *eap_hdd_key;
     void *edid;
+    void *uvd_fw_gladius;   // Orbis' UVD microcode image for Gladius, in rodata
     void (*wlanbt)(unsigned int state);
     int (*kern_reboot)(int magic);
     void(*set_gpu_freq)(unsigned int num, unsigned int freq);

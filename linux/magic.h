@@ -568,6 +568,14 @@
 #define kern_off_set_cu_power_gate 0x4BA420
 #define kern_off_pstate_before_shutdown 0x3A23A0
 #define kern_off_set_nclk_mem_spd 0x4368D0
+/* Orbis' own UVD microcode for Gladius: [ATI LIB=UVDFW,1.152.50], the image
+ * its KMD memcpy()s at 0xdc8acee9 when the GPU id masks to 0x740f00.
+ * Verified against both 12.52 kernel dumps. The two Liverpool images live at
+ * 0x8944A0 (1.101.42, 0x37BB0) and 0x8CC0B0 (1.92.43, 0x4CA38); they are not
+ * used here because telling them apart needs the GPU revision, which the
+ * loader does not have. See docs/uvd-microcode-2026-10-23.md. */
+#define kern_off_uvd_fw_gladius 0x83F300
+#define kern_sz_uvd_fw_gladius 0x5515C
 
 #elif defined PS4_13_00 //ArabPixel
 #define kern_off_printf 0x2E0440
@@ -746,4 +754,11 @@
 #define kern_off_pstate_before_shutdown 0x3A2E40
 #define kern_off_set_nclk_mem_spd 0x4373F0
 
+#endif
+
+/* Firmwares whose UVD image has not been located yet: the feature turns
+ * itself off rather than copying whatever happens to be at an offset. */
+#ifndef kern_off_uvd_fw_gladius
+#define kern_off_uvd_fw_gladius 0
+#define kern_sz_uvd_fw_gladius 0
 #endif
